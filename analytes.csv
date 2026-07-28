@@ -1,43 +1,89 @@
 species,mz,relative_intensity,sensitivity_signal_per_ppm,enabled,notes
-Water,16,1,,true,Starter EI pattern; replace with instrument calibration
-Water,17,21,,true,Starter EI pattern; replace with instrument calibration
-Water,18,100,,true,Starter EI pattern; replace with instrument calibration
-Carbon monoxide,12,5,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
-Carbon monoxide,16,2,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
-Carbon monoxide,28,100,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
-Carbon dioxide,16,9,,true,Starter EI pattern
-Carbon dioxide,28,10,,true,Starter EI pattern
-Carbon dioxide,44,100,,true,Starter EI pattern
-Carbon dioxide,45,1.2,,true,Starter EI pattern
-Ethylene,25,12,,true,Starter EI pattern
-Ethylene,26,55,,true,Starter EI pattern
-Ethylene,27,62,,true,Starter EI pattern
-Ethylene,28,100,,true,Starter EI pattern
-Ethylene,29,2.2,,true,Starter EI pattern
-Ethane,26,7,,true,Starter EI pattern
-Ethane,27,33,,true,Starter EI pattern
-Ethane,28,100,,true,Starter EI pattern
-Ethane,29,22,,true,Starter EI pattern
-Ethane,30,26,,true,Starter EI pattern
-Ethane,31,0.6,,true,Starter EI pattern
-Methyl propionate,27,15,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,29,60,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,31,23,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,43,13,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,57,100,,true,Approximate starter pattern; base ion commonly m/z 57
-Methyl propionate,59,35,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,60,7,,true,Approximate starter pattern; acquire a pure-feed spectrum
-Methyl propionate,88,12,,true,Approximate starter pattern; molecular ion
-Methyl propionate,89,0.6,,true,Approximate starter pattern
-Methyl acrylate,26,12,,true,Approximate starter pattern; acquire a pure-standard spectrum
-Methyl acrylate,27,55,,true,Approximate starter pattern; acquire a pure-standard spectrum
-Methyl acrylate,28,10,,true,Approximate starter pattern; acquire a pure-standard spectrum
-Methyl acrylate,55,100,,true,Approximate starter pattern
-Methyl acrylate,58,10,,true,Approximate starter pattern
-Methyl acrylate,59,55,,true,Approximate starter pattern
-Methyl acrylate,85,8,,true,Approximate starter pattern
-Methyl acrylate,86,10,,true,Approximate starter pattern; molecular ion
-Nitrogen,14,7,,false,Enable only to model carrier drift; can dominate m/z 28
-Nitrogen,28,100,,false,Enable only to model carrier drift; can dominate m/z 28
-Oxygen,16,22,,false,Optional background component
-Oxygen,32,100,,false,Optional background component
+Hydrogen,2,100,,true,Primary dehydrogenation product; instrument-specific sensitivity is essential
+Water,16,1,,true,Background or secondary oxygen-removal product; not necessarily formed under oxygen-free conditions
+Water,17,21,,true,Background or secondary oxygen-removal product; not necessarily formed under oxygen-free conditions
+Water,18,100,,true,Background or secondary oxygen-removal product; not necessarily formed under oxygen-free conditions
+Carbon monoxide,12,5,,true,Primary decarbonylation/C-C scission candidate; m/z 28 strongly overlaps N2 and ethylene
+Carbon monoxide,16,2,,true,Primary decarbonylation/C-C scission candidate; m/z 28 strongly overlaps N2 and ethylene
+Carbon monoxide,28,100,,true,Primary decarbonylation/C-C scission candidate; m/z 28 strongly overlaps N2 and ethylene
+Carbon dioxide,16,9,,true,Track as background or oxidative product; not expected as the only carbonyl product without an oxygen source
+Carbon dioxide,28,10,,true,Track as background or oxidative product
+Carbon dioxide,44,100,,true,Track as background or oxidative product
+Carbon dioxide,45,1.2,,true,Track as background or oxidative product
+Methane,12,3,,true,C1 product from C-C scission and hydrogen transfer
+Methane,13,8,,true,C1 product from C-C scission and hydrogen transfer
+Methane,14,16,,true,C1 product from C-C scission and hydrogen transfer
+Methane,15,86,,true,C1 product from C-C scission and hydrogen transfer
+Methane,16,100,,true,C1 product from C-C scission and hydrogen transfer
+Ethylene,25,12,,true,C2 cracking/dehydrogenation product
+Ethylene,26,55,,true,C2 cracking/dehydrogenation product
+Ethylene,27,62,,true,C2 cracking/dehydrogenation product
+Ethylene,28,100,,true,C2 cracking/dehydrogenation product
+Ethylene,29,2.2,,true,C2 cracking/dehydrogenation product
+Ethane,26,7,,true,C2 cracking/hydrogen-transfer product
+Ethane,27,33,,true,C2 cracking/hydrogen-transfer product
+Ethane,28,100,,true,C2 cracking/hydrogen-transfer product
+Ethane,29,22,,true,C2 cracking/hydrogen-transfer product
+Ethane,30,26,,true,C2 cracking/hydrogen-transfer product
+Ethane,31,0.6,,true,C2 cracking/hydrogen-transfer product
+Propylene,26,10,,true,C3 dehydrogenated/decarbonylation product
+Propylene,27,55,,true,C3 dehydrogenated/decarbonylation product
+Propylene,41,100,,true,C3 dehydrogenated/decarbonylation product
+Propylene,42,70,,true,C3 dehydrogenated/decarbonylation product
+Propane,26,8,,true,Stoichiometric decarbonylation candidate with CO
+Propane,27,37,,true,Stoichiometric decarbonylation candidate with CO
+Propane,28,58,,true,Stoichiometric decarbonylation candidate with CO
+Propane,29,100,,true,Stoichiometric decarbonylation candidate with CO
+Propane,41,11,,true,Stoichiometric decarbonylation candidate with CO
+Propane,42,4,,true,Stoichiometric decarbonylation candidate with CO
+Propane,43,12,,true,Stoichiometric decarbonylation candidate with CO
+Propane,44,26,,true,Stoichiometric decarbonylation candidate with CO
+2-Butanone,15,5,,true,Reactant; acquire a pure-feed bypass spectrum on this exact instrument
+2-Butanone,27,16,,true,Reactant; open-reference starter EI pattern
+2-Butanone,29,27,,true,Reactant; open-reference starter EI pattern
+2-Butanone,41,12,,true,Reactant; open-reference starter EI pattern
+2-Butanone,43,100,,true,Reactant base ion; heavily shared with other compounds
+2-Butanone,44,4.5,,true,Reactant isotope/fragment channel
+2-Butanone,57,14,,true,Reactant fragment
+2-Butanone,72,30,,true,Reactant molecular ion; important distinguishing channel
+2-Butanone,73,1.5,,true,Reactant M+1 channel
+Methyl vinyl ketone,15,10.2,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,26,8.5,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,27,49.8,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,41,5.7,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,42,12.4,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,43,83.2,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,55,100,,true,Plausible 2-butanone dehydrogenation product; distinguishing base ion
+Methyl vinyl ketone,56,4.6,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,69,1.2,,true,Plausible 2-butanone dehydrogenation product
+Methyl vinyl ketone,70,57.8,,true,Plausible 2-butanone dehydrogenation product; molecular ion
+Methyl vinyl ketone,71,2.8,,true,Plausible 2-butanone dehydrogenation product
+2-Butanol,31,8,,false,Lower-priority hydrogenation/hydrogen-transfer candidate; enable only with supporting ions or a standard
+2-Butanol,43,18,,false,Lower-priority hydrogenation/hydrogen-transfer candidate
+2-Butanol,45,100,,false,Lower-priority hydrogenation/hydrogen-transfer candidate
+2-Butanol,59,20,,false,Lower-priority hydrogenation/hydrogen-transfer candidate
+2-Butanol,74,3,,false,Lower-priority hydrogenation/hydrogen-transfer candidate; molecular ion
+Acetone,15,20,,false,Lower-priority C-C redistribution/oxygenate candidate
+Acetone,43,100,,false,Lower-priority C-C redistribution/oxygenate candidate
+Acetone,58,24,,false,Lower-priority C-C redistribution/oxygenate candidate; molecular ion
+Acetaldehyde,29,45,,false,Lower-priority C-C scission oxygenate candidate
+Acetaldehyde,43,20,,false,Lower-priority C-C scission oxygenate candidate
+Acetaldehyde,44,100,,false,Lower-priority C-C scission oxygenate candidate; molecular ion overlaps CO2
+Butenes,27,35,,false,Secondary C4 deoxygenation product group; isomers cannot be separated at unit mass
+Butenes,29,30,,false,Secondary C4 deoxygenation product group
+Butenes,39,65,,false,Secondary C4 deoxygenation product group
+Butenes,41,100,,false,Secondary C4 deoxygenation product group
+Butenes,55,80,,false,Secondary C4 deoxygenation product group
+Butenes,56,55,,false,Secondary C4 deoxygenation product group; molecular ion
+Butane,27,35,,false,Secondary fully deoxygenated C4 product
+Butane,29,45,,false,Secondary fully deoxygenated C4 product
+Butane,41,55,,false,Secondary fully deoxygenated C4 product
+Butane,43,100,,false,Secondary fully deoxygenated C4 product
+Butane,58,25,,false,Secondary fully deoxygenated C4 product; molecular ion
+Nitrogen,14,7,,false,Enable only to model N2 carrier drift; can dominate m/z 28
+Nitrogen,28,100,,false,Enable only to model N2 carrier drift; can dominate m/z 28
+Oxygen,16,22,,false,Optional air/background component
+Oxygen,32,100,,false,Optional air/background component
+Argon,36,0.34,,false,Optional carrier/background component
+Argon,38,0.06,,false,Optional carrier/background component
+Argon,40,100,,false,Optional carrier/background component; sample export has a very large m/z 40 peak
