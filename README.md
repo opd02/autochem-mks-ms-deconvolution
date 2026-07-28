@@ -1,31 +1,30 @@
 # AutoChem / MKS MS Deconvolution
 
-This ready-to-run Python tool decomposes each time-resolved mass spectrum into a nonnegative mixture of expected species. It was preconfigured for:
+This Python tool decomposes each time-resolved, unit-mass EI spectrum into a nonnegative mixture of expected species. Version 1.1 is configured for:
 
-- methyl propionate feed over Pt/C at 350 °C
-- N₂ carrier
-- ethane, ethylene, CO, CO₂, water, and methyl acrylate as candidate products
+- 2-butanone vapor over Pt/C at 400 °C
+- N₂ carrier, with optional Ar-background handling
+- scans from m/z 2 through at least m/z 75
+- quoted MKS tab-delimited exports as well as ordinary CSV and Excel files
 
-It accepts wide data (one column per m/z) or long data (time, m/z, signal), from CSV/TSV/TXT or Excel.
-
-## What it reports
-
-- Deconvolved signal coefficient versus time for every component
-- Relative fitted-signal percentage versus time
-- Absolute ppm only when you enter calibration sensitivities
-- Reconstructed spectra, residuals, per-time fit R²/RMSE, and diagnostic plots
-- Pairwise component-pattern similarity, which exposes components that cannot be separated reliably
-- Optional unlabeled components extracted from residual signal
-
-The model is nonnegative least squares (NNLS), not a black-box classifier:
+The model is nonnegative least squares (NNLS):
 
 `measured spectrum ≈ reference-pattern matrix × nonnegative component signals`
 
-This is generally the appropriate starting model when expected species are known and unit-mass EI fragmentation is approximately linear.
+NNLS is transparent and appropriate when the expected species are known and signal/fragmentation is approximately linear. It cannot turn an ambiguous unit-mass spectrum into a unique chemical identification.
 
-## 1. Install
+## What it reports
 
-Install Python 3.10 or newer from <https://www.python.org/downloads/>. On Windows, check **Add Python to PATH** during installation.
+- Deconvolved component signals and relative fitted-signal percentages over time
+- Original MKS timestamps and scan numbers
+- Absolute ppm when instrument calibration sensitivities are provided
+- Reconstructed spectra, residuals, R²/RMSE, and diagnostic plots
+- Pairwise component-pattern similarity to expose non-identifiable combinations
+- Optional unlabeled components extracted from positive residual signal
+
+## Install
+
+Install Python 3.10 or newer from <https://www.python.org/downloads/>. On Windows, check **Add Python to PATH**.
 
 Open Command Prompt or PowerShell in this folder:
 
@@ -47,17 +46,28 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-## 2. Run
+## Run an MKS export
 
-The easiest Windows method is to drag your CSV/XLSX export onto `run_windows.bat`.
+The supplied MKS format is accepted directly, even when the filename ends in `.txt`:
 
-From a terminal:
-
-```bash
-python ms_deconvolution.py "C:\path\to\run.csv"
+```text
+"Time"  "Scan"  "Mass 2"  "Mass 3" ... "Mass 75"
+"12/4/2025 5:41:48 PM"  1  1.8118e+02 ... 9.4256e+00
 ```
 
-Results go into `run_results` beside the input file.
+The actual delimiter is a tab. Quoted headings, scientific notation, negative detector values, the trailing blank column, timestamps, and scan numbers are handled automatically:
+
+```bash
+python ms_deconvolution.py "225124ptcustab_000001 - Copy.txt"
+```
+
+Results are written beside the input in a folder ending in `_results`. On Windows, you can instead drag the export onto `run_windows.bat`.
+
+Other supported formats:
+
+- CSV/TSV/TXT wide format: one column per mass
+- Long format: one row per time/mass/signal observation
+- XLSX/XLS Excel files
 
 For Excel:
 
@@ -65,165 +75,177 @@ For Excel:
 python ms_deconvolution.py run.xlsx --sheet Data
 ```
 
-## Accepted input layouts
-
-### Wide format
-
-Headings such as `18`, `m/z 18`, `Mass 18`, and `18 amu` are recognized:
-
-```text
-Elapsed Time (s),m/z 2,m/z 3,...,m/z 100
-0,1.2,0.8,...,3.1
-10,1.1,0.9,...,3.2
-```
-
-If time is in minutes/hours and the heading does not say so:
-
-```bash
-python ms_deconvolution.py run.csv --time-unit minutes
-```
-
-### Long format
-
-```text
-Time,Mass,Signal
-0,18,1.2
-0,28,20.1
-10,18,1.3
-```
-
-If headings are unusual:
+For unusual long-format headings:
 
 ```bash
 python ms_deconvolution.py run.csv --format long ^
   --time-column "Cycle Time" --mass-column "AMU" --signal-column "SEM Current"
 ```
 
-## 3. Set the baseline correctly
+## Candidate chemistry for 2-butanone on Pt at 400 °C
 
-By default, the program subtracts the median of the first 5% of points (at least 3, at most 100). Those points should be a carrier-only or pre-reaction baseline.
+The default library is intentionally hierarchical:
 
-Specify an elapsed-time interval in seconds:
+| Status | Component | Chemical rationale / useful channels |
+|---|---|---|
+| Enabled | 2-butanone | Reactant; m/z 43 is intense but nonspecific, so retain molecular ion m/z 72 |
+| Enabled | H₂ + methyl vinyl ketone | Direct dehydrogenation pair; MVK has distinguishing m/z 55 and 70 |
+| Enabled | CO + propane | Stoichiometric decarbonylation pair: C₄H₈O → C₃H₈ + CO |
+| Enabled | Methane, ethane/ethylene, propane/propylene | C–C scission followed by surface hydrogen transfer or dehydrogenation |
+| Enabled | H₂O and CO₂ | Track as background or secondary oxidative products; they are not automatically primary products in oxygen-free N₂ |
+| Disabled | 2-butanol | Hydrogenation or transfer-hydrogenation product; less likely without a hydrogen source |
+| Disabled | Acetone and acetaldehyde | Possible secondary C–C redistribution/scission oxygenates |
+| Disabled | Butenes and butane | Possible secondary C₄ deoxygenation products |
+| Disabled | N₂, O₂, and Ar | Carrier/background components; enable only when deliberately modeling their drift |
+
+The disabled candidates remain in `analytes.csv` so they can be enabled after their distinguishing ions or standards support them. Enabling every chemically possible species at once is not recommended: the patterns become too correlated for a stable solution.
+
+Carbon deposited on the catalyst is another plausible high-temperature sink, but it is not directly observable by the online MS. A carbon balance or post-run catalyst characterization is needed to assess it.
+
+## Important overlaps
+
+### m/z 28
+
+N₂, CO, ethylene, ethane, propane, and a CO₂ fragment all contribute at m/z 28.
+
+- Do not quantify CO or C₂ products from m/z 28 alone.
+- Retain m/z 26, 27, 29, and 30.
+- A carrier-only baseline helps but does not replace calibration.
+
+### m/z 43
+
+2-butanone, propane, acetone, butane, and other fragments can contribute at m/z 43.
+
+- Use m/z 72 with companion 2-butanone fragments for the reactant.
+- Use m/z 70 and 55 for methyl vinyl ketone.
+- Use m/z 44 with the propane fragment pattern, while accounting for CO₂.
+
+### Large m/z 40 background
+
+The short example export has an exceptionally large m/z 40 signal with m/z 36/38 companions, consistent with argon. This may be a carrier from that particular experiment, a residual background, or a different run than the intended N₂ experiment.
+
+The code warns when m/z 40 dominates. To remove only the main Ar channel:
 
 ```bash
-python ms_deconvolution.py run.csv --baseline-start 0 --baseline-end 300
+python ms_deconvolution.py run.txt --exclude-masses 40
 ```
 
-Or use exactly 50 initial scans:
+If m/z 35–39 are also dominated by Ar isotope/tailing/background signal, exclude the range after inspecting those channels:
 
 ```bash
-python ms_deconvolution.py run.csv --baseline-points 50
+python ms_deconvolution.py run.txt --exclude-masses 35-40
 ```
 
-To analyze an already baseline-corrected file:
+Or down-weight noisy background channels using the carrier-only baseline:
 
 ```bash
-python ms_deconvolution.py run.csv --baseline none
+python ms_deconvolution.py run.txt --noise-weighting
 ```
 
-## 4. Replace starter spectra with your instrument spectra
+## Choose the baseline correctly
 
-Edit `analytes.csv`. Each row contains:
+By default, the median of the first 5% of scans is subtracted (at least 3 and at most 100 points). These scans must represent an appropriate pre-reaction or carrier-only period.
+
+Specify an elapsed-time range in seconds:
+
+```bash
+python ms_deconvolution.py run.txt --baseline-start 0 --baseline-end 300
+```
+
+Or specify a number of initial scans:
+
+```bash
+python ms_deconvolution.py run.txt --baseline-points 50
+```
+
+For data already baseline-corrected:
+
+```bash
+python ms_deconvolution.py run.txt --baseline none
+```
+
+Negative values after subtraction are clipped to zero for NNLS. The original signed values remain in `reconstructed_spectra_long.csv`.
+
+## Calibrate before reporting concentrations or selectivity
+
+Edit `analytes.csv`:
 
 | Column | Meaning |
 |---|---|
 | `species` | Component name |
-| `mz` | Nominal mass channel |
-| `relative_intensity` | Fragment intensity on any consistent relative scale |
+| `mz` | Nominal mass |
+| `relative_intensity` | Fragment intensity on a consistent scale |
 | `sensitivity_signal_per_ppm` | Optional fitted coefficient per ppm |
 | `enabled` | `true` or `false` |
-| `notes` | Free text |
+| `notes` | Role and limitations |
 
-The included small-molecule EI patterns are reasonable starter patterns. The ester patterns are deliberately labeled approximate. Fragment ratios depend on electron energy, ion source, tuning, pressure, capillary, and detector. For publishable selectivity:
+For defensible concentration or selectivity:
 
-1. Record N₂-only baseline at the same flow/pressure.
-2. Record methyl propionate feed over an inert bed or bypass at the same inlet conditions.
-3. Run known mixtures or individual standards for CO, CO₂, ethane, ethylene, and methyl acrylate.
-4. Replace relative intensities in `analytes.csv` with the observed ratios.
-5. Fit sensitivity versus known ppm for each gas and enter the slope in `sensitivity_signal_per_ppm`.
+1. Record carrier-only baseline at the same flow, pressure, temperature, and capillary settings.
+2. Record pure 2-butanone feed through an inert bed or bypass.
+3. Run known mixtures or standards for likely gases.
+4. Replace starter fragment ratios with those observed on this instrument.
+5. Fit sensitivity against known ppm and enter the slope in `sensitivity_signal_per_ppm`.
 
-Repeat the same sensitivity value on all rows for one species, or place it on one row.
-
-## Critical identifiability issue for this experiment
-
-N₂, CO, ethylene, ethane, and a CO₂ fragment all contribute at m/z 28. Because N₂ is the carrier, small changes in total flow or pressure can dwarf the product signals there.
-
-- Do not quantify CO or C₂ products from m/z 28 alone.
-- Retain m/z 26, 27, 29, and 30 for C₂ discrimination.
-- Use m/z 44 for CO₂, m/z 18 for water, and 55/59/86/88 for the esters.
-- A carrier-only baseline helps, but instrument-specific calibration is still necessary.
-- `component_similarity.csv` and warnings in `analysis_report.txt` show when patterns are too similar.
-
-Nitrogen is included but disabled in `analytes.csv`. Enable it only if you need to model carrier drift and have stable instrument-specific N₂ fragments. Doing so can make CO/ethylene estimates less identifiable.
+`relative_pct_*` is the share of the **fitted MS signal**, not mol%, conversion, carbon selectivity, or product selectivity. True selectivity additionally requires response-factor correction, molar flows, reactant conversion, and carbon-number accounting.
 
 ## Useful options
 
-Exclude background or unreliable channels:
+Use selected masses:
 
 ```bash
-python ms_deconvolution.py run.csv --exclude-masses 28,32,40
-```
-
-Use only selected masses:
-
-```bash
-python ms_deconvolution.py run.csv --include-masses 12,16-18,25-31,43-45,55,57-60,85-89
-```
-
-Weight by inverse noise measured during the baseline:
-
-```bash
-python ms_deconvolution.py run.csv --noise-weighting
+python ms_deconvolution.py run.txt --include-masses 2,12-18,25-30,41-45,55-58,69-74
 ```
 
 Smooth the fitted time profiles with an 11-point Savitzky–Golay filter:
 
 ```bash
-python ms_deconvolution.py run.csv --smooth-window 11
+python ms_deconvolution.py run.txt --smooth-window 11
 ```
 
-Find two unlabeled patterns remaining in the positive residuals:
+Extract two unlabeled patterns from positive residuals:
 
 ```bash
-python ms_deconvolution.py run.csv --unknown-components 2
+python ms_deconvolution.py run.txt --unknown-components 2
 ```
 
-Unknown components are exploratory NMF factors, not chemical identifications. Inspect their major m/z peaks and add chemically plausible candidates to `analytes.csv`.
+Unknown components are exploratory NMF factors, not chemical identifications.
 
-## Test it before using real data
+## Test the installation
+
+Generate and fit a synthetic 2-butanone experiment:
 
 ```bash
 python ms_deconvolution.py --make-demo demo.csv
 python ms_deconvolution.py demo.csv --output demo_results
 ```
 
-Compare `demo_results/deconvolved_components.csv` with `demo_truth.csv`.
+Run the MKS-format parser regression test:
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## Output files
 
 | File | Contents |
 |---|---|
-| `deconvolved_components.csv` | Signals, relative fitted percentages, optional ppm, R², RMSE |
+| `deconvolved_components.csv` | Timestamp, scan, fitted signals, relative percentages, optional ppm, R², RMSE |
 | `component_overview.png` | Main time-profile plots |
-| `fit_quality.png` | Intense raw channels and spectrum R² |
-| `residual_heatmap.png` | Missing/poorly fitted signal by time and m/z |
-| `reconstructed_spectra_long.csv` | Raw, corrected, fitted, and residual values |
+| `fit_quality.png` | Intense corrected channels and spectrum R² |
+| `residual_heatmap.png` | Missing or poorly fitted signal by time and m/z |
+| `reconstructed_spectra_long.csv` | Original signed signal, corrected signal, fit, and residual |
 | `component_similarity.csv` | Pairwise spectral overlap |
-| `baseline_and_noise.csv` | Subtracted baselines and measured noise |
+| `baseline_and_noise.csv` | Subtracted baseline and baseline noise |
 | `analysis_report.txt/.json` | Parsing, fitting, and warning summary |
 
-## Interpretation limits
-
-`relative_pct_*` is the share of the **fitted MS signal**, not automatically mol% or carbon selectivity. Different molecules have different ionization cross-sections, fragmentation yields, transfer efficiencies, and detector responses. True gas concentration requires calibration. Carbon selectivity additionally requires molar flow and carbon-number accounting.
-
-To avoid meaningless percentages when only baseline noise is present, relative percentages are set to zero until the total fitted signal exceeds three times the combined baseline-noise norm. The exact threshold is recorded in `analysis_report.txt`.
-
-Reference spectra are a starting point for deconvolution, not proof that a component is present. Treat a product assignment as strong only when multiple characteristic ions rise together, the fitted coefficient exceeds baseline noise, fit residuals improve, and a standard or orthogonal method supports it.
+Relative percentages are set to zero until the total fitted signal exceeds three times the combined baseline-noise norm.
 
 ## Reference-data notes
 
-The default species and molecular masses were checked against the NIST Chemistry WebBook. NIST provides EI spectra but notes licensing restrictions on spectrum downloads for some compounds, so this package does not redistribute NIST spectral files. Open reference spectra can also be obtained from MassBank, whose records are openly versioned.
+The starter EI patterns are for initial model construction, not publication-ready calibration. The 2-butanone and methyl-vinyl-ketone identities and spectra were checked against open MassBank records and the NIST Chemistry WebBook. NIST restricts redistribution of some downloadable spectra, so no NIST spectral file is bundled.
 
+- 2-butanone MassBank record: <https://massbank.eu/MassBank/RecordDisplay?id=MSBNK-Fac_Eng_Univ_Tokyo-JP001803>
+- Methyl vinyl ketone MassBank record: <https://massbank.eu/MassBank/RecordDisplay?id=MSBNK-Fac_Eng_Univ_Tokyo-JP002135>
 - NIST Chemistry WebBook: <https://webbook.nist.gov/>
-- MassBank: <https://massbank.eu/MassBank/>
 - MassBank open-data repository: <https://github.com/MassBank/MassBank-data>
