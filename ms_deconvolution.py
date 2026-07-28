@@ -37,7 +37,7 @@ from scipy.optimize import nnls
 from scipy.signal import savgol_filter
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_LIBRARY = SCRIPT_DIR / "analytes.csv"
 
@@ -49,6 +49,9 @@ class ParsedMS:
     signals: np.ndarray  # time x mass
     time_label: str
     source_format: str
+    original_time: np.ndarray | None = None
+    scan_ids: np.ndarray | None = None
+    source_delimiter: str | None = None
 
 
 def _normalized_name(value: object) -> str:
@@ -97,19 +100,25 @@ def read_table(path: Path, sheet: str | int | None = None) -> pd.DataFrame:
     suffix = path.suffix.lower()
     if suffix in {".xlsx", ".xls"}:
         selected_sheet: str | int = 0 if sheet is None else sheet
-        return pd.read_excel(path, sheet_name=selected_sheet)
+        frame = pd.read_excel(path, sheet_name=selected_sheet)
+        frame.attrs["source_delimiter"] = "Excel worksheet"
+        return frame
 
-    attempts: list[dict] = [
-        {"sep": None, "engine": "python", "comment": "#"},
-        {"sep": ",", "engine": "python", "comment": "#"},
-        {"sep": "\t", "engine": "python", "comment": "#"},
-        {"sep": ";", "engine": "python", "comment": "#"},
-    ]
+    likely_separator = "\t" if suffix in {".txt", ".tsv"} else ","
+    separators = [likely_separator, None, "\t", ",", ";"]
+    attempts = []
+    seen: set[str | None] = set()
+    for separator in separators:
+        if separator not in seen:
+            attempts.append({"sep": separator, "engine": "python", "comment": "#"})
+            seen.add(separator)
     errors = []
     for options in attempts:
         try:
             frame = pd.read_csv(path, **options)
             if frame.shape[1] >= 2:
+                delimiter_names = {"\t": "tab", ",": "comma", ";": "semicolon", None: "auto-detected"}
+                frame.attrs["source_delimiter"] = delimiter_names.get(options["sep"], repr(options["sep"]))
                 return frame
         except Exception as exc:  # pragma: no cover - message collected for user
             errors.append(str(exc))
@@ -146,7 +155,7 @@ def _time_to_seconds(series: pd.Series, name: object, unit: str) -> tuple[np.nda
         seconds = timedelta.dt.total_seconds().to_numpy(float)
         return seconds - seconds[0], name_text
 
-    datetimes = pd.to_datetime(series.astype(str), errors="coerce")
+    datetimes = pd.to_datetime(series.astype(str), errors="coerce", format="mixed")
     if datetimes.notna().mean() >= 0.80:
         seconds = (datetimes - datetimes.iloc[0]).dt.total_seconds().to_numpy(float)
         return seconds, name_text
@@ -165,6 +174,7 @@ def parse_input(
     signal_column: str | None,
     time_unit: str,
 ) -> ParsedMS:
+    source_delimiter = frame.attrs.get("source_delimiter")
     frame = frame.dropna(axis=0, how="all").dropna(axis=1, how="all")
     if frame.empty:
         raise ValueError("The input table is empty.")
@@ -180,6 +190,7 @@ def parse_input(
         signal_column,
         ("signal", "intensity", "current", "ioncurrent", "partialpressure", "pressure", "value"),
     )
+    scan_col = _find_column(frame.columns, None, ("scan", "scannumber", "scanindex"))
 
     if data_format == "auto":
         data_format = "long" if mass_col is not None and signal_col is not None else "wide"
@@ -213,6 +224,7 @@ def parse_input(
             signals=pivoted.to_numpy(float),
             time_label=time_label,
             source_format="long",
+            source_delimiter=source_delimiter,
         )
 
     mass_columns: list[tuple[object, float]] = []
@@ -232,8 +244,15 @@ def parse_input(
     if time_col is None:
         time_values = np.arange(len(frame), dtype=float)
         time_label = "row index (assumed 1 second per row)"
+        original_time = None
     else:
         time_values, time_label = _time_to_seconds(frame[time_col], time_col, time_unit)
+        original_time = frame[time_col].astype(str).to_numpy()
+    scan_ids = (
+        pd.to_numeric(frame[scan_col], errors="coerce").to_numpy()
+        if scan_col is not None
+        else None
+    )
 
     numeric = pd.DataFrame(index=frame.index)
     for col, mass in mass_columns:
@@ -241,6 +260,10 @@ def parse_input(
     valid_rows = np.isfinite(time_values) & (numeric.notna().mean(axis=1).to_numpy() >= 0.50)
     numeric = numeric.loc[valid_rows].interpolate(limit_direction="both")
     time_values = time_values[valid_rows]
+    if original_time is not None:
+        original_time = original_time[valid_rows]
+    if scan_ids is not None:
+        scan_ids = scan_ids[valid_rows]
     if numeric.empty:
         raise ValueError("No usable numeric signal rows remained after parsing.")
 
@@ -251,12 +274,20 @@ def parse_input(
     unique_masses = np.unique(rounded)
     combined = np.column_stack([np.nanmean(values[:, rounded == mass], axis=1) for mass in unique_masses])
     order = np.argsort(time_values)
+    is_mks_layout = (
+        scan_col is not None
+        and time_col is not None
+        and all(str(col).strip().lower().startswith("mass ") for col, _ in mass_columns)
+    )
     return ParsedMS(
         time_seconds=time_values[order],
         masses=unique_masses.astype(float),
         signals=combined[order],
         time_label=time_label,
-        source_format="wide",
+        source_format="wide MKS scan export" if is_mks_layout else "wide",
+        original_time=original_time[order] if original_time is not None else None,
+        scan_ids=scan_ids[order] if scan_ids is not None else None,
+        source_delimiter=source_delimiter,
     )
 
 
@@ -531,13 +562,17 @@ def make_demo(path: Path, library_path: Path, points: int = 300) -> None:
             c[:, species.index(name)] = values
 
     reaction = 1.0 / (1.0 + np.exp(-(t - 600.0) / 45.0))
-    add("Methyl propionate", reaction * (350.0 + 20.0 * np.sin(t / 280.0)))
+    add("2-Butanone", reaction * (350.0 + 20.0 * np.sin(t / 280.0)))
+    add("Hydrogen", 35.0 * reaction)
+    add("Methane", 30.0 * reaction)
     add("Ethylene", 110.0 * reaction * np.exp(-t / 5000.0))
     add("Ethane", 60.0 * reaction)
+    add("Propylene", 45.0 * reaction)
+    add("Propane", 70.0 * reaction)
     add("Carbon monoxide", 45.0 * reaction)
-    add("Carbon dioxide", 80.0 * reaction)
-    add("Water", 35.0 * reaction)
-    add("Methyl acrylate", 55.0 * np.exp(-0.5 * ((t - 1600.0) / 450.0) ** 2))
+    add("Carbon dioxide", 12.0 * reaction)
+    add("Water", 10.0 * reaction)
+    add("Methyl vinyl ketone", 55.0 * np.exp(-0.5 * ((t - 1600.0) / 450.0) ** 2))
     rng = np.random.default_rng(7)
     baseline = 2.0 + 0.02 * masses
     signals = c @ patterns.T + baseline[None, :] + rng.normal(0, 0.35, (points, len(masses)))
@@ -628,7 +663,13 @@ def analyze(args: argparse.Namespace) -> Path:
         if factor is not None and np.isfinite(factor) and factor > 0:
             calibrated[name] = coefficients[:, j] / factor
 
-    results = pd.DataFrame({"time_seconds": parsed.time_seconds, "time_minutes": parsed.time_seconds / 60.0})
+    results = pd.DataFrame()
+    if parsed.original_time is not None:
+        results["timestamp"] = parsed.original_time
+    if parsed.scan_ids is not None:
+        results["scan"] = parsed.scan_ids
+    results["time_seconds"] = parsed.time_seconds
+    results["time_minutes"] = parsed.time_seconds / 60.0
     results["total_fitted_signal"] = total
     results["signal_detected"] = detected
     for j, name in enumerate(species):
@@ -641,7 +682,12 @@ def analyze(args: argparse.Namespace) -> Path:
     results["fit_rmse"] = rmse
     results.to_csv(output / "deconvolved_components.csv", index=False)
 
-    reconstructed = pd.DataFrame(
+    reconstructed_columns: dict[str, np.ndarray] = {}
+    if parsed.original_time is not None:
+        reconstructed_columns["timestamp"] = np.repeat(parsed.original_time, len(masses))
+    if parsed.scan_ids is not None:
+        reconstructed_columns["scan"] = np.repeat(parsed.scan_ids, len(masses))
+    reconstructed_columns.update(
         {
             "time_seconds": np.repeat(parsed.time_seconds, len(masses)),
             "mz": np.tile(masses, len(parsed.time_seconds)),
@@ -651,6 +697,7 @@ def analyze(args: argparse.Namespace) -> Path:
             "residual": residual.ravel(),
         }
     )
+    reconstructed = pd.DataFrame(reconstructed_columns)
     reconstructed.to_csv(output / "reconstructed_spectra_long.csv", index=False)
 
     baseline_table = pd.DataFrame({"mz": masses, "baseline": baseline, "baseline_noise_MAD": noise})
@@ -695,6 +742,22 @@ def analyze(args: argparse.Namespace) -> Path:
         )
     if 28 not in np.rint(masses).astype(int):
         warnings.append("m/z 28 is absent/excluded; CO and C2 hydrocarbon estimates may be weak.")
+    if 43 in np.rint(masses).astype(int):
+        warnings.append(
+            "m/z 43 is shared by 2-butanone and several hydrocarbon/oxygenate fragments. "
+            "Use the 2-butanone molecular ion at m/z 72 and companion ions for feed quantification."
+        )
+    nominal_masses = np.rint(masses).astype(int)
+    if 40 in nominal_masses:
+        mass40_index = int(np.where(nominal_masses == 40)[0][0])
+        other_baselines = np.abs(np.delete(baseline, mass40_index))
+        typical_baseline = float(np.nanmedian(other_baselines[np.isfinite(other_baselines)]))
+        if typical_baseline > 0 and abs(float(baseline[mass40_index])) > 100.0 * typical_baseline:
+            warnings.append(
+                "m/z 40 is exceptionally large relative to other channels, consistent with an Ar carrier/background peak. "
+                "If Ar is not analytically relevant, consider --exclude-masses 35-40 or --noise-weighting; "
+                "inspect m/z 35-39 before excluding the full range."
+            )
     median_r2 = float(np.nanmedian(r2)) if np.isfinite(r2).any() else float("nan")
     if np.isfinite(median_r2) and median_r2 < 0.90:
         warnings.append(
@@ -706,7 +769,9 @@ def analyze(args: argparse.Namespace) -> Path:
         "program_version": VERSION,
         "input_file": str(input_path),
         "input_format": parsed.source_format,
+        "input_delimiter": parsed.source_delimiter,
         "time_interpretation": parsed.time_label,
+        "scan_ids_preserved": parsed.scan_ids is not None,
         "n_time_points": int(len(parsed.time_seconds)),
         "masses_used": [float(value) for value in masses],
         "components_fitted": species,
@@ -727,7 +792,9 @@ AutoChem MS deconvolution report
 ================================
 Input: {input_path.name}
 Detected format: {parsed.source_format}
+Detected delimiter: {parsed.source_delimiter}
 Time interpretation: {parsed.time_label}
+Scan IDs preserved: {parsed.scan_ids is not None}
 Time points: {len(parsed.time_seconds)}
 Mass channels used: {", ".join(f"{x:g}" for x in masses)}
 Components: {", ".join(species)}
