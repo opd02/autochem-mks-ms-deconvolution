@@ -1,0 +1,43 @@
+species,mz,relative_intensity,sensitivity_signal_per_ppm,enabled,notes
+Water,16,1,,true,Starter EI pattern; replace with instrument calibration
+Water,17,21,,true,Starter EI pattern; replace with instrument calibration
+Water,18,100,,true,Starter EI pattern; replace with instrument calibration
+Carbon monoxide,12,5,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
+Carbon monoxide,16,2,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
+Carbon monoxide,28,100,,true,Starter EI pattern; m/z 28 strongly overlaps N2 and ethylene
+Carbon dioxide,16,9,,true,Starter EI pattern
+Carbon dioxide,28,10,,true,Starter EI pattern
+Carbon dioxide,44,100,,true,Starter EI pattern
+Carbon dioxide,45,1.2,,true,Starter EI pattern
+Ethylene,25,12,,true,Starter EI pattern
+Ethylene,26,55,,true,Starter EI pattern
+Ethylene,27,62,,true,Starter EI pattern
+Ethylene,28,100,,true,Starter EI pattern
+Ethylene,29,2.2,,true,Starter EI pattern
+Ethane,26,7,,true,Starter EI pattern
+Ethane,27,33,,true,Starter EI pattern
+Ethane,28,100,,true,Starter EI pattern
+Ethane,29,22,,true,Starter EI pattern
+Ethane,30,26,,true,Starter EI pattern
+Ethane,31,0.6,,true,Starter EI pattern
+Methyl propionate,27,15,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,29,60,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,31,23,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,43,13,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,57,100,,true,Approximate starter pattern; base ion commonly m/z 57
+Methyl propionate,59,35,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,60,7,,true,Approximate starter pattern; acquire a pure-feed spectrum
+Methyl propionate,88,12,,true,Approximate starter pattern; molecular ion
+Methyl propionate,89,0.6,,true,Approximate starter pattern
+Methyl acrylate,26,12,,true,Approximate starter pattern; acquire a pure-standard spectrum
+Methyl acrylate,27,55,,true,Approximate starter pattern; acquire a pure-standard spectrum
+Methyl acrylate,28,10,,true,Approximate starter pattern; acquire a pure-standard spectrum
+Methyl acrylate,55,100,,true,Approximate starter pattern
+Methyl acrylate,58,10,,true,Approximate starter pattern
+Methyl acrylate,59,55,,true,Approximate starter pattern
+Methyl acrylate,85,8,,true,Approximate starter pattern
+Methyl acrylate,86,10,,true,Approximate starter pattern; molecular ion
+Nitrogen,14,7,,false,Enable only to model carrier drift; can dominate m/z 28
+Nitrogen,28,100,,false,Enable only to model carrier drift; can dominate m/z 28
+Oxygen,16,22,,false,Optional background component
+Oxygen,32,100,,false,Optional background component
