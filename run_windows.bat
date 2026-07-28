@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 if "%~1"=="" (
-  echo Drag an AutoChem/MKS CSV or Excel export onto this file.
+  echo Drag an AutoChem/MKS TXT, CSV, TSV, or Excel export onto this file.
   echo.
   pause
   exit /b 1
